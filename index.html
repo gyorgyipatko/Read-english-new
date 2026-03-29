@@ -38,15 +38,14 @@ button{
 <select id="voiceSelect"></select>
 <br>
 
-<button onclick="speak()">Speak</button>
-<button onclick="stopSpeak()">Stop</button>
-<button onclick="resetSpeak()">Reset</button>
+<button onclick="start()">Speak</button>
+<button onclick="stop()">Stop</button>
+<button onclick="reset()">Reset</button>
 
 <script>
 let voices = [];
-let fullText = "";
-let currentIndex = 0;
-let utterance;
+let sentences = [];
+let currentSentence = 0;
 
 function loadVoices(){
   voices = speechSynthesis.getVoices().filter(v=>v.lang.startsWith("en"));
@@ -62,32 +61,45 @@ function loadVoices(){
 
 speechSynthesis.onvoiceschanged = loadVoices;
 
-function speak(){
-  if(speechSynthesis.speaking) return;
+function splitSentences(text){
+  return text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
+}
 
-  fullText = document.getElementById("text").value;
+function speakSentence(){
+  if(currentSentence >= sentences.length) return;
 
-  utterance = new SpeechSynthesisUtterance(fullText.substring(currentIndex));
+  const utterance = new SpeechSynthesisUtterance(sentences[currentSentence]);
   const voiceName = document.getElementById("voiceSelect").value;
   const voice = voices.find(v=>v.name===voiceName);
   if(voice) utterance.voice = voice;
 
-  utterance.onboundary = function(event){
-    if(event.name === "word"){
-      currentIndex += event.charLength;
-    }
+  utterance.onend = () => {
+    currentSentence++;
+    speakSentence();
   };
 
   speechSynthesis.speak(utterance);
 }
 
-function stopSpeak(){
+function start(){
+  if(speechSynthesis.speaking) return;
+
+  const text = document.getElementById("text").value;
+  if(sentences.length === 0){
+    sentences = splitSentences(text);
+  }
+
+  speakSentence();
+}
+
+function stop(){
   speechSynthesis.cancel();
 }
 
-function resetSpeak(){
+function reset(){
   speechSynthesis.cancel();
-  currentIndex = 0;
+  sentences = [];
+  currentSentence = 0;
 }
 
 loadVoices();
