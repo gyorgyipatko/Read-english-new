@@ -16,6 +16,7 @@ textarea{
   font-size:18px;
   padding:15px;
   border-radius:10px;
+  box-sizing: border-box;
 }
 button{
   font-size:18px;
@@ -32,11 +33,11 @@ button{
 <h2>English Text-to-Speech</h2>
 
 <textarea id="text" rows="8" placeholder="Type or paste English text here..."></textarea>
-<br>
+<br><br>
 
 <label>Voice: </label>
 <select id="voiceSelect"></select>
-<br>
+<br><br>
 
 <button onclick="start()">Speak</button>
 <button onclick="stop()">Stop</button>
@@ -47,6 +48,7 @@ let sentences = [];
 let currentSentence = 0;
 let lastText = "";
 
+// Betölti az angol hangokat
 function loadVoices(){
   voices = speechSynthesis.getVoices().filter(v=>v.lang.startsWith("en"));
   const select = document.getElementById("voiceSelect");
@@ -61,14 +63,20 @@ function loadVoices(){
 
 speechSynthesis.onvoiceschanged = loadVoices;
 
+// Mondatokra bontás
 function splitSentences(text){
   return text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
 }
 
+// Egy mondat felolvasása, majd automatikus továbblépés
 function speakSentence(){
-  if(currentSentence >= sentences.length) return;
+  if(currentSentence >= sentences.length){
+    currentSentence = 0;   // ha végigért, vissza az elejére
+    return;
+  }
 
   const utterance = new SpeechSynthesisUtterance(sentences[currentSentence]);
+
   const voiceName = document.getElementById("voiceSelect").value;
   const voice = voices.find(v=>v.name===voiceName);
   if(voice) utterance.voice = voice;
@@ -81,12 +89,14 @@ function speakSentence(){
   speechSynthesis.speak(utterance);
 }
 
+// Speak gomb
 function start(){
   if(speechSynthesis.speaking) return;
 
-  const text = document.getElementById("text").value;
+  const text = document.getElementById("text").value.trim();
+  if(!text) return;
 
-  // Ha megváltozott a szöveg, elölről kezdjük
+  // Ha változott a szöveg → elölről kezdjük
   if(text !== lastText){
     sentences = splitSentences(text);
     currentSentence = 0;
@@ -96,10 +106,12 @@ function start(){
   speakSentence();
 }
 
+// Stop gomb
 function stop(){
   speechSynthesis.cancel();
 }
 
+// Első betöltés
 loadVoices();
 </script>
 
