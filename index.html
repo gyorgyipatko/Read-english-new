@@ -1,117 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>English Text To Speech</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>British English Text Speaker PRO</title>
+
 <style>
 body{
-  font-family: Arial;
-  max-width:800px;
-  margin:auto;
-  padding:40px;
-  background: linear-gradient(to right,#eef2ff,#e0e7ff);
+    font-family: Arial, sans-serif;
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 20px;
+    background:#f4f6f8;
 }
 textarea{
-  width:100%;
-  font-size:18px;
-  padding:15px;
-  border-radius:10px;
-  box-sizing: border-box;
+    width:100%;
+    height:220px;
+    padding:12px;
+    font-size:16px;
 }
-button{
-  font-size:18px;
-  padding:10px 20px;
-  margin:10px 5px 0 0;
-  border-radius:8px;
-  border:none;
-  cursor:pointer;
+select,button{
+    margin:10px 5px 10px 0;
+    padding:10px 15px;
+    font-size:16px;
 }
 </style>
 </head>
 <body>
 
-<h2>English Text-to-Speech</h2>
+<h2>British English Text Speaker – Teacher Edition</h2>
 
-<textarea id="text" rows="8" placeholder="Type or paste English text here..."></textarea>
-<br><br>
+<textarea id="textInput" placeholder="Paste English text here..."></textarea><br/>
 
-<label>Voice: </label>
+<label>Voice:</label>
 <select id="voiceSelect"></select>
-<br><br>
 
-<button onclick="start()">Speak</button>
-<button onclick="stop()">Stop</button>
+<div>
+    <button onclick="startSpeaking()">Speak</button>
+    <button onclick="pauseSpeaking()">Pause</button>
+    <button onclick="resumeSpeaking()">Resume</button>
+    <button onclick="stopSpeaking()">Stop</button>
+</div>
 
 <script>
 let voices = [];
 let sentences = [];
-let currentSentence = 0;
-let lastText = "";
+let currentIndex = 0;
+let isPaused = false;
+let currentUtterance = null;
 
-// Betölti az angol hangokat
 function loadVoices(){
-  voices = speechSynthesis.getVoices().filter(v=>v.lang.startsWith("en"));
-  const select = document.getElementById("voiceSelect");
-  select.innerHTML = "";
-  voices.forEach(v=>{
-    const opt=document.createElement("option");
-    opt.value=v.name;
-    opt.text=v.name;
-    select.appendChild(opt);
-  });
+    voices = speechSynthesis.getVoices().filter(v => v.lang === "en-GB");
+    const select = document.getElementById("voiceSelect");
+    select.innerHTML = "";
+
+    voices.forEach((v,i)=>{
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = v.name;
+        select.appendChild(opt);
+    });
 }
 
 speechSynthesis.onvoiceschanged = loadVoices;
 
-// Mondatokra bontás
-function splitSentences(text){
-  return text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
+function splitIntoSentences(text){
+    return text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
 }
 
-// Egy mondat felolvasása, majd automatikus továbblépés
 function speakSentence(){
-  if(currentSentence >= sentences.length){
-    currentSentence = 0;   // ha végigért, vissza az elejére
-    return;
-  }
+    if(currentIndex >= sentences.length) return;
 
-  const utterance = new SpeechSynthesisUtterance(sentences[currentSentence]);
+    const voice = voices[document.getElementById("voiceSelect").value];
+    currentUtterance = new SpeechSynthesisUtterance(sentences[currentIndex]);
 
-  const voiceName = document.getElementById("voiceSelect").value;
-  const voice = voices.find(v=>v.name===voiceName);
-  if(voice) utterance.voice = voice;
+    currentUtterance.voice = voice;
+    currentUtterance.rate = 1;
 
-  utterance.onend = () => {
-    currentSentence++;
+    // női hang magasabb pitch
+    if(voice.name.toLowerCase().includes("female") || voice.name.toLowerCase().includes("woman")){
+        currentUtterance.pitch = 1.4;
+    } else {
+        currentUtterance.pitch = 1;
+    }
+
+    currentUtterance.onend = ()=>{
+        if(!isPaused){
+            currentIndex++;
+            speakSentence();
+        }
+    };
+
+    speechSynthesis.speak(currentUtterance);
+}
+
+function startSpeaking(){
+    const text = document.getElementById("textInput").value;
+    if(!text) return;
+
+    speechSynthesis.cancel();
+    sentences = splitIntoSentences(text);
+    currentIndex = 0;
+    isPaused = false;
     speakSentence();
-  };
-
-  speechSynthesis.speak(utterance);
 }
 
-// Speak gomb
-function start(){
-  if(speechSynthesis.speaking) return;
-
-  const text = document.getElementById("text").value.trim();
-  if(!text) return;
-
-  // Ha változott a szöveg → elölről kezdjük
-  if(text !== lastText){
-    sentences = splitSentences(text);
-    currentSentence = 0;
-    lastText = text;
-  }
-
-  speakSentence();
+function pauseSpeaking(){
+    isPaused = true;
+    speechSynthesis.cancel(); // megáll pontosan a mondat végén
 }
 
-// Stop gomb
-function stop(){
-  speechSynthesis.cancel();
+function resumeSpeaking(){
+    if(!isPaused) return;
+    isPaused = false;
+    speakSentence(); // pontosan onnan megy tovább
 }
 
-// Első betöltés
+function stopSpeaking(){
+    speechSynthesis.cancel();
+    currentIndex = 0;
+    isPaused = false;
+}
+
 loadVoices();
 </script>
 
