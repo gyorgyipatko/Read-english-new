@@ -32,12 +32,10 @@ button{
 <h2>English Text-to-Speech</h2>
 
 <textarea id="text" rows="8" placeholder="Type or paste English text here..."></textarea>
-
 <br>
 
 <label>Voice: </label>
 <select id="voiceSelect"></select>
-
 <br>
 
 <button onclick="speak()">Speak</button>
@@ -46,8 +44,9 @@ button{
 
 <script>
 let voices = [];
-let position = 0;
-let currentText = "";
+let fullText = "";
+let currentIndex = 0;
+let utterance;
 
 function loadVoices(){
   voices = speechSynthesis.getVoices().filter(v=>v.lang.startsWith("en"));
@@ -64,17 +63,22 @@ function loadVoices(){
 speechSynthesis.onvoiceschanged = loadVoices;
 
 function speak(){
-  currentText = document.getElementById("text").value;
-  const utter = new SpeechSynthesisUtterance(currentText.slice(position));
+  if(speechSynthesis.speaking) return;
+
+  fullText = document.getElementById("text").value;
+
+  utterance = new SpeechSynthesisUtterance(fullText.substring(currentIndex));
   const voiceName = document.getElementById("voiceSelect").value;
   const voice = voices.find(v=>v.name===voiceName);
-  if(voice) utter.voice = voice;
+  if(voice) utterance.voice = voice;
 
-  utter.onboundary = (e)=>{
-    position += e.charIndex;
-  }
+  utterance.onboundary = function(event){
+    if(event.name === "word"){
+      currentIndex += event.charLength;
+    }
+  };
 
-  speechSynthesis.speak(utter);
+  speechSynthesis.speak(utterance);
 }
 
 function stopSpeak(){
@@ -82,8 +86,8 @@ function stopSpeak(){
 }
 
 function resetSpeak(){
-  position = 0;
   speechSynthesis.cancel();
+  currentIndex = 0;
 }
 
 loadVoices();
